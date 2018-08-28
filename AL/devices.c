@@ -7,13 +7,6 @@
 #include "../include/AL/alc.h"
 
 
-enum ContextState {
-    CONTEXT_STATE_ACTIVE,
-    CONTEXT_STATE_SUSPENDED
-};
-
-
-
 struct ALCdevice_struct {
     ALCchar deviceName[64];
     ALboolean isOpen;
