@@ -6,8 +6,7 @@
 # Copyright (C) 2018 Luke Benstead
 
 TARGET = libAL.a
-OBJS = AL/devices.o
-OBJS += containers/stack.o containers/named_array.o containers/aligned_vector.o
+OBJS = AL/mojoal.o AL/alut.o AL/aldc.o
 
 SUBDIRS =
 
