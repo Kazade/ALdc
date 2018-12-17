@@ -1,31 +1,97 @@
+#include <stdint.h>
+#include <kos/mutex.h>
 #include "aldc.h"
 
-void SDL_AtomicLock(SDL_SpinLock *lock) {
+// FIXME: How to implement this on SH4?
+#define PAUSE_INSTRUCTION()
 
+#define SDL_Delay thd_sleep
+
+static SDL_SpinLock locks[32];
+
+static inline void enterLock(void *a) {
+    uintptr_t index = ((((uintptr_t)a) >> 3) & 0x1f);
+    SDL_AtomicLock(&locks[index]);
+}
+
+static inline void leaveLock(void *a) {
+    uintptr_t index = ((((uintptr_t)a) >> 3) & 0x1f);
+    SDL_AtomicUnlock(&locks[index]);
+}
+
+SDL_bool SDL_AtomicTryLock(SDL_SpinLock *lock)
+{
+    /* Terrible terrible damage */
+    static mutex_t *_spinlock_mutex;
+
+    if (!_spinlock_mutex) {
+        _spinlock_mutex = (mutex_t*) malloc(sizeof(mutex_t));
+        /* Race condition on first lock... */
+        mutex_init(_spinlock_mutex, MUTEX_TYPE_NORMAL);
+    }
+
+    mutex_lock(_spinlock_mutex);
+
+    if (*lock == 0) {
+        *lock = 1;
+        mutex_unlock(_spinlock_mutex);
+        return SDL_TRUE;
+    } else {
+        mutex_unlock(_spinlock_mutex);
+        return SDL_FALSE;
+    }
+}
+
+void SDL_AtomicLock(SDL_SpinLock *lock) {
+    int iterations = 0;
+    /* FIXME: Should we have an eventual timeout? */
+    while (!SDL_AtomicTryLock(lock)) {
+        if (iterations < 32) {
+            iterations++;
+            PAUSE_INSTRUCTION();
+        } else {
+            /* !!! FIXME: this doesn't definitely give up the current timeslice, it does different things on various platforms. */
+            SDL_Delay(0);
+        }
+    }
 }
 
 void SDL_AtomicUnlock(SDL_SpinLock *lock) {
-
+    *lock = 0;
 }
 
 SDL_bool SDL_AtomicCAS(SDL_atomic_t *a, int oldval, int newval) {
+    SDL_bool retval = SDL_FALSE;
 
+    enterLock(a);
+    if (a->value == oldval) {
+        a->value = newval;
+        retval = SDL_TRUE;
+    }
+    leaveLock(a);
+
+    return retval;
 }
 
 SDL_bool SDL_AtomicCASPtr(void* *a, void *oldval, void *newval) {
+    SDL_bool retval = SDL_FALSE;
 
-}
+    enterLock(a);
+    if (*a == oldval) {
+        *a = newval;
+        retval = SDL_TRUE;
+    }
+    leaveLock(a);
 
-void SDLCALL SDL_MemoryBarrierRelease(void) {
-
-}
-
-void SDLCALL SDL_MemoryBarrierAcquire(void) {
-
+    return retval;
 }
 
 int SDLCALL SDL_AtomicSet(SDL_atomic_t *a, int v) {
-
+    int value;
+    do {
+        value = a->value;
+    } while (!SDL_AtomicCAS(a, value, v));
+    return value;
 }
 
 int SDLCALL SDL_AtomicAdd(SDL_atomic_t *a, int v)
@@ -61,7 +127,7 @@ int SDL_AtomicGet(SDL_atomic_t *a)
 }
 
 int SDL_InitSubSystem(Uint32 flags) {
-
+    return 0;
 }
 
 void SDL_QuitSubSystem(Uint32 flags) {

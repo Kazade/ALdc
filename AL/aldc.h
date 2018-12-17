@@ -60,8 +60,8 @@ extern void SDL_AtomicUnlock(SDL_SpinLock *lock);
 extern SDL_bool SDL_AtomicCAS(SDL_atomic_t *a, int oldval, int newval);
 extern SDL_bool SDL_AtomicCASPtr(void* *a, void *oldval, void *newval);
 
-extern DECLSPEC void SDLCALL SDL_MemoryBarrierRelease(void);
-extern DECLSPEC void SDLCALL SDL_MemoryBarrierAcquire(void);
+#define SDL_MemoryBarrierRelease() __asm__ __volatile__ ("" : : : "memory")
+#define SDL_MemoryBarrierAcquire() __asm__ __volatile__ ("" : : : "memory")
 
 extern DECLSPEC int SDLCALL SDL_AtomicGet(SDL_atomic_t *a);
 extern DECLSPEC int SDLCALL SDL_AtomicSet(SDL_atomic_t *a, int v);
