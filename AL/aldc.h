@@ -27,6 +27,9 @@ typedef enum {
 #define SDL_memset      memset
 #define SDL_cosf cos
 #define SDL_sinf sin
+#define SDL_sqrt sqrt
+#define SDL_pow pow
+#define SDL_ceil ceil
 
 #define SDL_min(x, y)	(((x) < (y)) ? (x) : (y))
 #define SDL_max(x, y)	(((x) > (y)) ? (x) : (y))
