@@ -535,16 +535,207 @@ SDL_AudioStream * SDL_NewAudioStream(
     return retval;
 }
 
-int SDL_AudioStreamPut(SDL_AudioStream *stream, const void *buf, int len) {
+static Uint8 * EnsureStreamBufferSize(SDL_AudioStream *stream, const int newlen) {
+    Uint8 *ptr;
+    size_t offset;
 
+    if (stream->work_buffer_len >= newlen) {
+        ptr = stream->work_buffer_base;
+    } else {
+        ptr = (Uint8 *) SDL_realloc(stream->work_buffer_base, newlen + 32);
+        if (!ptr) {
+            SDL_OutOfMemory();
+            return NULL;
+        }
+        /* Make sure we're aligned to 16 bytes for SIMD code. */
+        stream->work_buffer_base = ptr;
+        stream->work_buffer_len = newlen;
+    }
+
+    offset = ((size_t) ptr) & 15;
+    return offset ? ptr + (16 - offset) : ptr;
+}
+
+static int SDL_AudioStreamPutInternal(SDL_AudioStream *stream, const void *buf, int len, int *maxputbytes)
+{
+    int buflen = len;
+    int workbuflen;
+    Uint8 *workbuf;
+    Uint8 *resamplebuf = NULL;
+    int resamplebuflen = 0;
+    int neededpaddingbytes;
+    int paddingbytes;
+
+    /* !!! FIXME: several converters can take advantage of SIMD, but only
+       !!! FIXME:  if the data is aligned to 16 bytes. EnsureStreamBufferSize()
+       !!! FIXME:  guarantees the buffer will align, but the
+       !!! FIXME:  converters will iterate over the data backwards if
+       !!! FIXME:  the output grows, and this means we won't align if buflen
+       !!! FIXME:  isn't a multiple of 16. In these cases, we should chop off
+       !!! FIXME:  a few samples at the end and convert them separately. */
+
+    /* no padding prepended on first run. */
+    neededpaddingbytes = stream->resampler_padding_samples * sizeof (float);
+    paddingbytes = stream->first_run ? 0 : neededpaddingbytes;
+    stream->first_run = SDL_FALSE;
+
+    /* Make sure the work buffer can hold all the data we need at once... */
+    workbuflen = buflen;
+    if (stream->cvt_before_resampling.needed) {
+        workbuflen *= stream->cvt_before_resampling.len_mult;
+    }
+
+    if (stream->dst_rate != stream->src_rate) {
+        /* resamples can't happen in place, so make space for second buf. */
+        const int framesize = stream->pre_resample_channels * sizeof (float);
+        const int frames = workbuflen / framesize;
+        resamplebuflen = ((int) SDL_ceil(frames * stream->rate_incr)) * framesize;
+        workbuflen += resamplebuflen;
+    }
+
+    if (stream->cvt_after_resampling.needed) {
+        /* !!! FIXME: buffer might be big enough already? */
+        workbuflen *= stream->cvt_after_resampling.len_mult;
+    }
+
+    workbuflen += neededpaddingbytes;
+
+    workbuf = EnsureStreamBufferSize(stream, workbuflen);
+    if (!workbuf) {
+        return -1;  /* probably out of memory. */
+    }
+
+    resamplebuf = workbuf;  /* default if not resampling. */
+
+    SDL_memcpy(workbuf + paddingbytes, buf, buflen);
+
+    if (stream->cvt_before_resampling.needed) {
+        stream->cvt_before_resampling.buf = workbuf + paddingbytes;
+        stream->cvt_before_resampling.len = buflen;
+        if (SDL_ConvertAudio(&stream->cvt_before_resampling) == -1) {
+            return -1;   /* uhoh! */
+        }
+        buflen = stream->cvt_before_resampling.len_cvt;
+    }
+
+    if (stream->dst_rate != stream->src_rate) {
+        /* save off some samples at the end; they are used for padding now so
+           the resampler is coherent and then used at the start of the next
+           put operation. Prepend last put operation's padding, too. */
+
+        /* prepend prior put's padding. :P */
+        if (paddingbytes) {
+            SDL_memcpy(workbuf, stream->resampler_padding, paddingbytes);
+            buflen += paddingbytes;
+        }
+
+        /* save off the data at the end for the next run. */
+        SDL_memcpy(stream->resampler_padding, workbuf + (buflen - neededpaddingbytes), neededpaddingbytes);
+
+        resamplebuf = workbuf + buflen;  /* skip to second piece of workbuf. */
+        SDL_assert(buflen >= neededpaddingbytes);
+        if (buflen > neededpaddingbytes) {
+            buflen = stream->resampler_func(stream, workbuf, buflen - neededpaddingbytes, resamplebuf, resamplebuflen);
+        } else {
+            buflen = 0;
+        }
+    }
+
+    if (stream->cvt_after_resampling.needed && (buflen > 0)) {
+        stream->cvt_after_resampling.buf = resamplebuf;
+        stream->cvt_after_resampling.len = buflen;
+        if (SDL_ConvertAudio(&stream->cvt_after_resampling) == -1) {
+            return -1;   /* uhoh! */
+        }
+        buflen = stream->cvt_after_resampling.len_cvt;
+    }
+
+    if (maxputbytes) {
+        const int maxbytes = *maxputbytes;
+        if (buflen > maxbytes)
+            buflen = maxbytes;
+        *maxputbytes -= buflen;
+    }
+
+    /* resamplebuf holds the final output, even if we didn't resample. */
+    return buflen ? SDL_WriteToDataQueue(stream->queue, resamplebuf, buflen) : 0;
+}
+
+int SDL_AudioStreamPut(SDL_AudioStream *stream, const void *buf, int len)
+{
+    /* !!! FIXME: several converters can take advantage of SIMD, but only
+       !!! FIXME:  if the data is aligned to 16 bytes. EnsureStreamBufferSize()
+       !!! FIXME:  guarantees the buffer will align, but the
+       !!! FIXME:  converters will iterate over the data backwards if
+       !!! FIXME:  the output grows, and this means we won't align if buflen
+       !!! FIXME:  isn't a multiple of 16. In these cases, we should chop off
+       !!! FIXME:  a few samples at the end and convert them separately. */
+
+    if (!stream) {
+        return SDL_InvalidParamError("stream");
+    } else if (!buf) {
+        return SDL_InvalidParamError("buf");
+    } else if (len == 0) {
+        return 0;  /* nothing to do. */
+    } else if ((len % stream->src_sample_frame_size) != 0) {
+        return SDL_SetError("Can't add partial sample frames");
+    }
+
+    if (!stream->cvt_before_resampling.needed &&
+        (stream->dst_rate == stream->src_rate) &&
+        !stream->cvt_after_resampling.needed) {
+
+        return SDL_WriteToDataQueue(stream->queue, buf, len);
+    }
+
+    while (len > 0) {
+        int amount;
+
+        /* If we don't have a staging buffer or we're given enough data that
+           we don't need to store it for later, skip the staging process.
+         */
+        if (!stream->staging_buffer_filled && len >= stream->staging_buffer_size) {
+            return SDL_AudioStreamPutInternal(stream, buf, len, NULL);
+        }
+
+        /* If there's not enough data to fill the staging buffer, just save it */
+        if ((stream->staging_buffer_filled + len) < stream->staging_buffer_size) {
+            SDL_memcpy(stream->staging_buffer + stream->staging_buffer_filled, buf, len);
+            stream->staging_buffer_filled += len;
+            return 0;
+        }
+
+        /* Fill the staging buffer, process it, and continue */
+        amount = (stream->staging_buffer_size - stream->staging_buffer_filled);
+        SDL_assert(amount > 0);
+        SDL_memcpy(stream->staging_buffer + stream->staging_buffer_filled, buf, amount);
+        stream->staging_buffer_filled = 0;
+        if (SDL_AudioStreamPutInternal(stream, stream->staging_buffer, stream->staging_buffer_size, NULL) < 0) {
+            return -1;
+        }
+        buf = (void *)((Uint8 *)buf + amount);
+        len -= amount;
+    }
+    return 0;
 }
 
 int SDL_AudioStreamGet(SDL_AudioStream *stream, void *buf, int len) {
+    if (!stream) {
+        return SDL_InvalidParamError("stream");
+    } else if (!buf) {
+        return SDL_InvalidParamError("buf");
+    } else if (len <= 0) {
+        return 0;  /* nothing to do. */
+    } else if ((len % stream->dst_sample_frame_size) != 0) {
+        return SDL_SetError("Can't request partial sample frames");
+    }
 
+    return (int) SDL_ReadFromDataQueue(stream->queue, buf, len);
 }
 
-int SDL_AudioStreamAvailable(SDL_AudioStream *stream) {
-
+int SDL_AudioStreamAvailable(SDL_AudioStream *stream)
+{
+    return stream ? (int) SDL_CountDataQueue(stream->queue) : 0;
 }
 
 SDL_AudioStatus SDL_GetAudioDeviceStatus(SDL_AudioDeviceID dev) {
@@ -564,7 +755,16 @@ void SDL_UnlockAudioDevice(SDL_AudioDeviceID dev) {
 }
 
 void SDL_FreeAudioStream(SDL_AudioStream *stream) {
-
+    if (stream) {
+        if (stream->cleanup_resampler_func) {
+            stream->cleanup_resampler_func(stream);
+        }
+        SDL_FreeDataQueue(stream->queue);
+        SDL_free(stream->staging_buffer);
+        SDL_free(stream->work_buffer_base);
+        SDL_free(stream->resampler_padding);
+        SDL_free(stream);
+    }
 }
 
 int SDL_GetNumAudioDevices(int iscapture) {
