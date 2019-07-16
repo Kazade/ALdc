@@ -7,9 +7,24 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#define SDL_LIL_ENDIAN 1234
+#define SDL_BYTEORDER SDL_LIL_ENDIAN
+#define SDL_MAX_SINT32 ((Sint32)0x7FFFFFFF)
+#if (defined(__GNUC__) && (__GNUC__ <= 2)) || defined(__CC_ARM) || defined(__cplusplus)
+#define SDL_VARIABLE_LENGTH_ARRAY 1
+#else
+#define SDL_VARIABLE_LENGTH_ARRAY
+#endif
+
+#define SDL_zerop(x) SDL_memset((x), 0, sizeof(*(x)))
+
 typedef uint8_t Uint8;
 typedef uint16_t Uint16;
 typedef uint32_t Uint32;
+typedef uint64_t Uint64;
+typedef int32_t Sint32;
+
+#define SDL_MAX_SINT32 ((Sint32)0x7FFFFFFF)
 
 typedef enum {
     SDL_FALSE = 0,
@@ -25,6 +40,7 @@ typedef enum {
 #define SDL_realloc realloc
 #define SDL_free	free
 #define SDL_memset      memset
+#define SDL_memmove memmove
 #define SDL_cosf cos
 #define SDL_sinf sin
 #define SDL_sqrt sqrt
@@ -48,6 +64,9 @@ typedef enum {
 #define SDL_zero(x)   SDL_memset(&(x), 0, sizeof((x)))
 
 #define SDL_arraysize(array)   (sizeof(array)/sizeof(array[0]))
+
+#define SDL_static_cast(type, expression) ((type)(expression))
+#define SDL_FORCE_INLINE __attribute__((always_inline)) static __inline__
 
 // --------------- ATOMIC -------------------
 
@@ -85,19 +104,42 @@ extern DECLSPEC void* SDLCALL SDL_AtomicGetPtr(void **a);
 
 // --------------- AUDIO -------------------
 
-#define SDL_AUDIO_BITSIZE(x)         (x & SDL_AUDIO_MASK_BITSIZE)
 #define SDL_AUDIO_MASK_BITSIZE       (0xFF)
+#define SDL_AUDIO_MASK_DATATYPE      (1<<8)
+#define SDL_AUDIO_MASK_ENDIAN        (1<<12)
+#define SDL_AUDIO_MASK_SIGNED        (1<<15)
+#define SDL_AUDIO_BITSIZE(x)         (x & SDL_AUDIO_MASK_BITSIZE)
+#define SDL_AUDIO_ISFLOAT(x)         (x & SDL_AUDIO_MASK_DATATYPE)
+#define SDL_AUDIO_ISBIGENDIAN(x)     (x & SDL_AUDIO_MASK_ENDIAN)
+#define SDL_AUDIO_ISSIGNED(x)        (x & SDL_AUDIO_MASK_SIGNED)
+#define SDL_AUDIO_ISINT(x)           (!SDL_AUDIO_ISFLOAT(x))
+#define SDL_AUDIO_ISLITTLEENDIAN(x)  (!SDL_AUDIO_ISBIGENDIAN(x))
+#define SDL_AUDIO_ISUNSIGNED(x) (!SDL_AUDIO_ISSIGNED(x))
 
 #define SDL_INIT_AUDIO   0x00000010
 
-#define AUDIO_U8 0x0008 /**< Unsigned 8-bit samples */
+#define AUDIO_U8        0x0008  /**< Unsigned 8-bit samples */
+#define AUDIO_S8        0x8008  /**< Signed 8-bit samples */
+#define AUDIO_U16LSB    0x0010  /**< Unsigned 16-bit samples */
+#define AUDIO_S16LSB    0x8010  /**< Signed 16-bit samples */
+#define AUDIO_U16MSB    0x1010  /**< As above, but big-endian byte order */
+#define AUDIO_S16MSB    0x9010  /**< As above, but big-endian byte order */
+#define AUDIO_U16       AUDIO_U16LSB
+#define AUDIO_S16 AUDIO_S16LSB
 
-#define AUDIO_S16LSB 0x8010
-#define AUDIO_F32LSB 0x8120
+#define AUDIO_S32LSB    0x8020  /**< 32-bit integer samples */
+#define AUDIO_S32MSB    0x9020  /**< As above, but big-endian byte order */
+#define AUDIO_S32 AUDIO_S32LSB
 
-#define AUDIO_S16SYS AUDIO_S16LSB
+#define AUDIO_F32LSB    0x8120  /**< 32-bit floating point samples */
+#define AUDIO_F32MSB    0x9120  /**< As above, but big-endian byte order */
+#define AUDIO_F32 AUDIO_F32LSB
+
+/* Little endian */
+#define AUDIO_U16SYS    AUDIO_U16LSB
+#define AUDIO_S16SYS    AUDIO_S16LSB
+#define AUDIO_S32SYS    AUDIO_S32LSB
 #define AUDIO_F32SYS AUDIO_F32LSB
-
 
 /* this is opaque to the outside world. */
 struct _SDL_AudioStream;
