@@ -522,11 +522,19 @@ void SDL_FreeAudioStream(SDL_AudioStream *stream) {
 }
 
 int SDL_GetNumAudioDevices(int iscapture) {
-
+    if(iscapture) {
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 const char *SDL_GetAudioDeviceName(int index, int iscapture) {
-
+    if(index == 0 && !iscapture) {
+        return "Yamaha AICA Stereo Device";
+    } else {
+        return NULL;
+    }
 }
 
 static SDL_bool SDL_SupportedAudioFormat(const SDL_AudioFormat fmt) {
