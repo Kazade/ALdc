@@ -6,6 +6,8 @@
  * doing it from scratch
  */
 
+#include <dc/spu.h>
+
 #include <stdint.h>
 #include <math.h>
 #include <stdlib.h>
@@ -20,6 +22,8 @@
 
 // FIXME: How to implement this on SH4?
 #define PAUSE_INSTRUCTION()
+
+#define DREAMCAST_AUDIO_DEVICE_NAME "Yamaha AICA Stereo Device"
 
 #define SDL_Delay thd_sleep
 
@@ -369,6 +373,8 @@ static int SDL_ResampleAudioStream(SDL_AudioStream *stream, const void *_inbuf, 
     return retval;
 }
 
+static uint8_t DEVICE_INITIALIZED = 0;
+
 SDL_AudioDeviceID SDL_OpenAudioDevice(
     const char*          device,
     int                  iscapture,
@@ -377,10 +383,50 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
     int                  allowed_changes
         ) {
 
+    if(device && strcmp(device, DREAMCAST_AUDIO_DEVICE_NAME) != 0) {
+        SDL_SetError("Couldn't find matching audio device");
+        return 0;
+    }
+
+    if(iscapture) {
+        SDL_SetError("No capture devices supported");
+        return 0;
+    }
+
+    if(DEVICE_INITIALIZED) {
+        return 0;
+    }
+
+    switch(desired->format) {
+        case AUDIO_S8:
+        case AUDIO_U8:
+            obtained->format = AUDIO_S8;
+        case AUDIO_S16:
+        case AUDIO_U16:
+            obtained->format = AUDIO_U16LSB;
+        default:
+            SDL_SetError("Unsupported audio format");
+            return 0;
+    }
+
+    //FIXME: Fill out the obtained details, do all the right checks here
+
+    obtained->channels = 2; // Always 2 channels for now
+
+    spu_init();
+
+    DEVICE_INITIALIZED = 1;
+
+    return 1;
 }
 
 void SDL_CloseAudioDevice(SDL_AudioDeviceID dev) {
+    if(dev != 1) {
+        return;
+    }
 
+    // SDL_DC_aica_stop(0);
+    DEVICE_INITIALIZED = 0;
 }
 
 SDL_AudioStream * SDL_NewAudioStream(
@@ -531,7 +577,7 @@ int SDL_GetNumAudioDevices(int iscapture) {
 
 const char *SDL_GetAudioDeviceName(int index, int iscapture) {
     if(index == 0 && !iscapture) {
-        return "Yamaha AICA Stereo Device";
+        return DREAMCAST_AUDIO_DEVICE_NAME;
     } else {
         return NULL;
     }
