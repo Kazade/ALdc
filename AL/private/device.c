@@ -43,7 +43,6 @@ const char *SDL_GetAudioDeviceName(int index, int iscapture) {
 }
 
 SDL_AudioStatus SDL_GetAudioDeviceStatus(SDL_AudioDeviceID dev) {
-    assert(dev == 1);
     return STATUS;
 }
 
