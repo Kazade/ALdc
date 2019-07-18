@@ -9,8 +9,15 @@
 #include <stdint.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 
+#ifdef _arch_dreamcast
 #include <kos/mutex.h>
+#define SDL_Delay thd_sleep
+#else
+void SDL_Delay(int ms) {}
+#endif
+
 #include "aldc.h"
 
 #include "./private/data_queue.h"
@@ -20,8 +27,6 @@
 
 // FIXME: How to implement this on SH4?
 #define PAUSE_INSTRUCTION()
-
-#define SDL_Delay thd_sleep
 
 static SDL_SpinLock locks[32];
 
@@ -37,6 +42,7 @@ static inline void leaveLock(void *a) {
 
 SDL_bool SDL_AtomicTryLock(SDL_SpinLock *lock)
 {
+#ifdef _arch_dreamcast
     /* Terrible terrible damage */
     static mutex_t *_spinlock_mutex;
 
@@ -56,6 +62,17 @@ SDL_bool SDL_AtomicTryLock(SDL_SpinLock *lock)
         mutex_unlock(_spinlock_mutex);
         return SDL_FALSE;
     }
+#else
+    return SDL_TRUE;
+#endif
+}
+
+SDL_bool SDL_HasSSE() {
+#ifdef _arch_dreamcast
+    return SDL_FALSE;
+#else
+    return SDL_TRUE;
+#endif
 }
 
 void SDL_AtomicLock(SDL_SpinLock *lock) {
@@ -600,6 +617,50 @@ static int SDL_AudioStreamPutInternal(SDL_AudioStream *stream, const void *buf, 
 
     /* resamplebuf holds the final output, even if we didn't resample. */
     return buflen ? SDL_WriteToDataQueue(stream->queue, resamplebuf, buflen) : 0;
+}
+
+int SDL_AudioStreamFlush(SDL_AudioStream *stream)
+{
+    if (!stream) {
+        return SDL_InvalidParamError("stream");
+    }
+
+    /* shouldn't use a staging buffer if we're not resampling. */
+    SDL_assert((stream->dst_rate != stream->src_rate) || (stream->staging_buffer_filled == 0));
+
+    if (stream->staging_buffer_filled > 0) {
+        /* push the staging buffer + silence. We need to flush out not just
+           the staging buffer, but the piece that the stream was saving off
+           for right-side resampler padding. */
+        const SDL_bool first_run = stream->first_run;
+        const int filled = stream->staging_buffer_filled;
+        int actual_input_frames = filled / stream->src_sample_frame_size;
+        if (!first_run)
+            actual_input_frames += stream->resampler_padding_samples / stream->pre_resample_channels;
+
+        if (actual_input_frames > 0) {  /* don't bother if nothing to flush. */
+            /* This is how many bytes we're expecting without silence appended. */
+            int flush_remaining = ((int) SDL_ceil(actual_input_frames * stream->rate_incr)) * stream->dst_sample_frame_size;
+
+            SDL_memset(stream->staging_buffer + filled, '\0', stream->staging_buffer_size - filled);
+            if (SDL_AudioStreamPutInternal(stream, stream->staging_buffer, stream->staging_buffer_size, &flush_remaining) < 0) {
+                return -1;
+            }
+
+            /* we have flushed out (or initially filled) the pending right-side
+               resampler padding, but we need to push more silence to guarantee
+               the staging buffer is fully flushed out, too. */
+            SDL_memset(stream->staging_buffer, '\0', filled);
+            if (SDL_AudioStreamPutInternal(stream, stream->staging_buffer, stream->staging_buffer_size, &flush_remaining) < 0) {
+                return -1;
+            }
+        }
+    }
+
+    stream->staging_buffer_filled = 0;
+    stream->first_run = SDL_TRUE;
+
+    return 0;
 }
 
 int SDL_AudioStreamPut(SDL_AudioStream *stream, const void *buf, int len)
@@ -1285,6 +1346,7 @@ int SDL_BuildAudioCVT(SDL_AudioCVT * cvt, SDL_AudioFormat src_fmt, Uint8 src_cha
     SDL_zerop(cvt);
 
     if (!SDL_SupportedAudioFormat(src_fmt)) {
+        fprintf(stderr, "%0x", src_fmt);
         return SDL_SetError("Invalid source format");
     } else if (!SDL_SupportedAudioFormat(dst_fmt)) {
         return SDL_SetError("Invalid destination format");

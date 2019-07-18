@@ -10,7 +10,7 @@ OBJS = AL/mojoal.o AL/aldc.o AL/private/data_queue.o AL/private/errors.o AL/priv
 
 SUBDIRS =
 
-KOS_CFLAGS += -ffast-math -O3 -Iinclude -Wall
+KOS_CFLAGS += -ffast-math -O3 -Iinclude -Wall -Werror
 
 link:
 	$(KOS_AR) rcs $(TARGET) $(OBJS)
