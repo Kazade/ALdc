@@ -26,6 +26,8 @@ static volatile SDL_bool RUNNING = SDL_TRUE;
  * bytes */
 static SDL_AudioStream* STREAM = NULL;
 
+static const SDL_AudioDeviceID DEVICE_ID = 2;
+
 int SDL_GetNumAudioDevices(int iscapture) {
     if(iscapture) {
         return 0;
@@ -43,11 +45,12 @@ const char *SDL_GetAudioDeviceName(int index, int iscapture) {
 }
 
 SDL_AudioStatus SDL_GetAudioDeviceStatus(SDL_AudioDeviceID dev) {
+    assert(dev == DEVICE_ID);
     return STATUS;
 }
 
 void SDL_PauseAudioDevice(SDL_AudioDeviceID dev, int pause_on) {
-    assert(dev == 1);
+    assert(dev == DEVICE_ID);
     STATUS = (pause_on) ? SDL_AUDIO_PAUSED : SDL_AUDIO_PLAYING;
 }
 
@@ -182,11 +185,11 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
     THREAD = thd_create(1, (void*)stream_thread, NULL);
     snd_stream_start(STREAM_HANDLE, SPEC.samples, 1);
 #endif
-    return 1;
+    return DEVICE_ID;
 }
 
 void SDL_CloseAudioDevice(SDL_AudioDeviceID dev) {
-    if(dev != 1) {
+    if(dev != DEVICE_ID) {
         return;
     }
 
