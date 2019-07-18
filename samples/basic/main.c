@@ -195,9 +195,15 @@ int main(int argc, char **argv)
 	alGenBuffers(1, &buffer);
 	TEST_ERROR("buffer generation");
 
+#ifdef _arch_dreamcast
     if(!LoadWAVFile("/rd/test.wav", &format, &data, &size, &freq)) {
         return -1;
     }
+#else
+    if(!LoadWAVFile("test.wav", &format, &data, &size, &freq)) {
+        return -1;
+    }
+#endif
 
 	TEST_ERROR("loading wav file");
 

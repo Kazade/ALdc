@@ -175,6 +175,9 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
 
     assert(STREAM);
 
+    // All things start paused!
+    STATUS = SDL_AUDIO_PAUSED;
+
 #ifdef _arch_dreamcast
     // FIXME: Move to SDL_init();
     snd_stream_init();
