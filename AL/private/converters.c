@@ -1,13 +1,15 @@
 #include "../aldc.h"
 
+#define DIVBY128 0.0078125f
+#define DIVBY32768 0.000030517578125f
+#define DIVBY8388607 0.00000011920930376163766f
+
 void SDLCALL
 SDL_Convert_S8_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
 {
     const Sint8 *src = ((const Sint8 *) (cvt->buf + cvt->len_cvt)) - 1;
     float *dst = ((float *) (cvt->buf + cvt->len_cvt * 4)) - 1;
     int i;
-
-    LOG_DEBUG_CONVERT("AUDIO_S8", "AUDIO_F32");
 
     for (i = cvt->len_cvt; i; --i, --src, --dst) {
         *dst = ((float) *src) * DIVBY128;
@@ -26,8 +28,6 @@ SDL_Convert_U8_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     float *dst = ((float *) (cvt->buf + cvt->len_cvt * 4)) - 1;
     int i;
 
-    LOG_DEBUG_CONVERT("AUDIO_U8", "AUDIO_F32");
-
     for (i = cvt->len_cvt; i; --i, --src, --dst) {
         *dst = (((float) *src) * DIVBY128) - 1.0f;
     }
@@ -44,8 +44,6 @@ SDL_Convert_S16_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     const Sint16 *src = ((const Sint16 *) (cvt->buf + cvt->len_cvt)) - 1;
     float *dst = ((float *) (cvt->buf + cvt->len_cvt * 2)) - 1;
     int i;
-
-    LOG_DEBUG_CONVERT("AUDIO_S16", "AUDIO_F32");
 
     for (i = cvt->len_cvt / sizeof (Sint16); i; --i, --src, --dst) {
         *dst = ((float) *src) * DIVBY32768;
@@ -64,8 +62,6 @@ SDL_Convert_U16_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     float *dst = ((float *) (cvt->buf + cvt->len_cvt * 2)) - 1;
     int i;
 
-    LOG_DEBUG_CONVERT("AUDIO_U16", "AUDIO_F32");
-
     for (i = cvt->len_cvt / sizeof (Uint16); i; --i, --src, --dst) {
         *dst = (((float) *src) * DIVBY32768) - 1.0f;
     }
@@ -83,8 +79,6 @@ SDL_Convert_S32_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     float *dst = (float *) cvt->buf;
     int i;
 
-    LOG_DEBUG_CONVERT("AUDIO_S32", "AUDIO_F32");
-
     for (i = cvt->len_cvt / sizeof (Sint32); i; --i, ++src, ++dst) {
         *dst = ((float) (*src>>8)) * DIVBY8388607;
     }
@@ -100,8 +94,6 @@ SDL_Convert_F32_to_S8(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     const float *src = (const float *) cvt->buf;
     Sint8 *dst = (Sint8 *) cvt->buf;
     int i;
-
-    LOG_DEBUG_CONVERT("AUDIO_F32", "AUDIO_S8");
 
     for (i = cvt->len_cvt / sizeof (float); i; --i, ++src, ++dst) {
         const float sample = *src;
@@ -127,8 +119,6 @@ SDL_Convert_F32_to_U8(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     Uint8 *dst = (Uint8 *) cvt->buf;
     int i;
 
-    LOG_DEBUG_CONVERT("AUDIO_F32", "AUDIO_U8");
-
     for (i = cvt->len_cvt / sizeof (float); i; --i, ++src, ++dst) {
         const float sample = *src;
         if (sample >= 1.0f) {
@@ -152,8 +142,6 @@ SDL_Convert_F32_to_S16(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     const float *src = (const float *) cvt->buf;
     Sint16 *dst = (Sint16 *) cvt->buf;
     int i;
-
-    LOG_DEBUG_CONVERT("AUDIO_F32", "AUDIO_S16");
 
     for (i = cvt->len_cvt / sizeof (float); i; --i, ++src, ++dst) {
         const float sample = *src;
@@ -179,8 +167,6 @@ SDL_Convert_F32_to_U16(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     Uint16 *dst = (Uint16 *) cvt->buf;
     int i;
 
-    LOG_DEBUG_CONVERT("AUDIO_F32", "AUDIO_U16");
-
     for (i = cvt->len_cvt / sizeof (float); i; --i, ++src, ++dst) {
         const float sample = *src;
         if (sample >= 1.0f) {
@@ -204,8 +190,6 @@ SDL_Convert_F32_to_S32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     const float *src = (const float *) cvt->buf;
     Sint32 *dst = (Sint32 *) cvt->buf;
     int i;
-
-    LOG_DEBUG_CONVERT("AUDIO_F32", "AUDIO_S32");
 
     for (i = cvt->len_cvt / sizeof (float); i; --i, ++src, ++dst) {
         const float sample = *src;

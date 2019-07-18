@@ -6,11 +6,11 @@
 # Copyright (C) 2018 Luke Benstead
 
 TARGET = libAL.a
-OBJS = AL/mojoal.o AL/aldc.o AL/private/data_queue.o AL/private/errors.o
+OBJS = AL/mojoal.o AL/aldc.o AL/private/data_queue.o AL/private/errors.o AL/private/device.o AL/private/converters.o
 
 SUBDIRS =
 
-KOS_CFLAGS += -ffast-math -O3 -Iinclude -Wall -Werror
+KOS_CFLAGS += -ffast-math -O3 -Iinclude -Wall
 
 link:
 	$(KOS_AR) rcs $(TARGET) $(OBJS)

@@ -1,4 +1,4 @@
-#include "printf.h"
+#include "stdio.h"
 #include "errors.h"
 
 static SDL_errorcode error = SDL_NO_ERROR;
