@@ -33,6 +33,8 @@ typedef enum {
     SDL_TRUE  = 1
 } SDL_bool;
 
+extern SDL_bool SDL_HasSSE();
+
 #define SDLCALL
 #define DECLSPEC __attribute__ ((visibility("default")))
 
@@ -58,12 +60,22 @@ typedef enum {
 #define SDL_acosf acosf
 
 #define SDL_strdup strdup
-#define SDL_strlcpy strlcpy
 #define SDL_strcasecmp strcasecmp
 #define SDL_strlen strlen
 #define SDL_assert assert
 #define SDL_strcmp      strcmp
 #define SDL_zero(x)   SDL_memset(&(x), 0, sizeof((x)))
+
+static inline size_t SDL_strlcpy(char *dst, const char *src, size_t maxlen) {
+    size_t srclen = SDL_strlen(src);
+    if (maxlen > 0) {
+        size_t len = SDL_min(srclen, maxlen - 1);
+        SDL_memcpy(dst, src, len);
+        dst[len] = '\0';
+    }
+
+    return srclen;
+}
 
 #define SDL_arraysize(array)   (sizeof(array)/sizeof(array[0]))
 
@@ -213,6 +225,7 @@ extern DECLSPEC SDL_AudioStream * SDLCALL SDL_NewAudioStream(
 extern DECLSPEC int SDLCALL SDL_AudioStreamPut(SDL_AudioStream *stream, const void *buf, int len);
 extern DECLSPEC int SDLCALL SDL_AudioStreamGet(SDL_AudioStream *stream, void *buf, int len);
 extern DECLSPEC int SDLCALL SDL_AudioStreamAvailable(SDL_AudioStream *stream);
+extern DECLSPEC int SDLCALL SDL_AudioStreamFlush(SDL_AudioStream *stream);
 extern DECLSPEC SDL_AudioStatus SDLCALL SDL_GetAudioDeviceStatus(SDL_AudioDeviceID dev);
 extern DECLSPEC void SDLCALL SDL_PauseAudioDevice(SDL_AudioDeviceID dev, int pause_on);
 extern DECLSPEC void SDLCALL SDL_LockAudioDevice(SDL_AudioDeviceID dev);

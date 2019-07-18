@@ -15,8 +15,10 @@
 #include <AL/al.h>
 #include <AL/alc.h>
 
+#ifdef _arch_dreamcast
 extern uint8 romdisk[];
 KOS_INIT_ROMDISK(romdisk);
+#endif
 
 static void list_audio_devices(const ALCchar *devices)
 {
@@ -113,7 +115,7 @@ ALboolean LoadWAVFile(const char* filename, ALenum* format, ALvoid** data, ALsiz
     fread(buffer, 4, sizeof(char), in);
     *size = (ALsizei) convert_to_int(buffer, 4);
     *data = (ALvoid*) malloc(*size * sizeof(char));
-    fread(*data, size, sizeof(char), in);
+    fread(*data, *size, sizeof(char), in);
 
     if(chan == 1) {
         *format = (bps == 8) ? AL_FORMAT_MONO8 : AL_FORMAT_MONO16;
@@ -131,10 +133,7 @@ ALboolean LoadWAVFile(const char* filename, ALenum* format, ALvoid** data, ALsiz
 int main(int argc, char **argv)
 {
 	ALboolean enumeration;
-	const ALCchar *devices;
 	const ALCchar *defaultDeviceName = argv[1];
-	int ret;
-	char *bufferData;
 	ALCdevice *device;
 	ALvoid *data;
 	ALCcontext *context;
@@ -142,7 +141,6 @@ int main(int argc, char **argv)
 	ALenum format;
 	ALuint buffer, source;
 	ALfloat listenerOri[] = { 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f };
-	ALboolean loop = AL_FALSE;
 	ALCenum error;
 	ALint source_state;
 
