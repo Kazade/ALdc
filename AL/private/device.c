@@ -73,19 +73,6 @@ void SDL_UnlockAudioDevice(SDL_AudioDeviceID dev) {
 
 }
 
-int stream_thread(void *arg) {
-	while(RUNNING) {
-#ifdef _arch_dreamcast
-		int ret = snd_stream_poll(STREAM_HANDLE);
-        assert(ret == 0);
-		thd_pass();
-#endif
-	}
-
-    printf("Thread exit!\n");
-	return 0;
-}
-
 #ifdef _arch_dreamcast
 void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
     printf("KOS requested %d bytes\n", smp_req);
@@ -118,6 +105,8 @@ void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
 
     printf("%d bytes available...\n", available);
 
+    SDL_AudioStreamFlush(STREAM);
+
     int gotten = SDL_AudioStreamGet(STREAM, DEST_BUFFER, available);
     assert(gotten != -1);
     assert(gotten == available && "Not all data was retrieved from the stream");
@@ -129,6 +118,24 @@ void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
     return DEST_BUFFER;
 }
 #endif
+
+int stream_thread(void *arg) {
+    STREAM_HANDLE = snd_stream_alloc(&stream_callback, OBTAINED_SPEC.size);
+    assert(STREAM_HANDLE != SND_STREAM_INVALID);
+    snd_stream_start(STREAM_HANDLE, OBTAINED_SPEC.freq, OBTAINED_SPEC.channels == 2);
+
+	while(RUNNING) {
+#ifdef _arch_dreamcast
+        int ret = snd_stream_poll(STREAM_HANDLE);
+        assert(ret == 0);
+
+		thd_pass();
+#endif
+	}
+
+    printf("Thread exit!\n");
+	return 0;
+}
 
 void SDL_CalculateAudioSpec(SDL_AudioSpec * spec) {
     switch (spec->format) {
@@ -172,7 +179,7 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
     memcpy(&DESIRED_SPEC, desired, sizeof(SDL_AudioSpec));
     memcpy(&OBTAINED_SPEC, desired, sizeof(SDL_AudioSpec));
 
-    OBTAINED_SPEC.format = AUDIO_S8;
+    OBTAINED_SPEC.format = AUDIO_S16LSB;
     OBTAINED_SPEC.channels = 2;
     OBTAINED_SPEC.freq = 44100;
 
@@ -203,17 +210,14 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
 
 #ifdef _arch_dreamcast
     // FIXME: Move to SDL_init();
-    snd_stream_init();
+    int rc = snd_stream_init();
+    assert(rc == 0);
 
     assert(OBTAINED_SPEC.size < SND_STREAM_BUFFER_MAX);
-
-    STREAM_HANDLE = snd_stream_alloc(&stream_callback, OBTAINED_SPEC.size);
-    assert(STREAM_HANDLE != SND_STREAM_INVALID);
 
     printf("Starting stream...\n");
     printf("Frequency is: %d\n", OBTAINED_SPEC.freq);
     printf("Channels: %d\n", OBTAINED_SPEC.channels);
-    snd_stream_start(STREAM_HANDLE, OBTAINED_SPEC.freq, OBTAINED_SPEC.channels == 2);
 
     THREAD = thd_create(1, (void*)stream_thread, NULL);
 #endif
