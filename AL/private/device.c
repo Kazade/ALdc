@@ -65,15 +65,20 @@ void SDL_UnlockAudioDevice(SDL_AudioDeviceID dev) {
 int stream_thread(void *arg) {
 	while(RUNNING) {
 #ifdef _arch_dreamcast
-		snd_stream_poll(STREAM_HANDLE);
+		int ret = snd_stream_poll(STREAM_HANDLE);
+        assert(ret == 0);
 		thd_pass();
 #endif
 	}
+
+    printf("Thread exit!\n");
 	return 0;
 }
 
 #ifdef _arch_dreamcast
 void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
+    printf("KOS requested %d bytes\n", smp_req);
+
     static Uint8* CONVERTED_BUFFER = NULL;
 
     // smp_req == spec.size because that's what we passed
@@ -84,31 +89,40 @@ void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
     if(STATUS == SDL_AUDIO_PAUSED || !SPEC.callback) {
         // Fill the buffer with silence
         SDL_memset(BUFFER, SPEC.silence, SPEC.size);
+        printf("Playing silence...\n");
+        if(STATUS == SDL_AUDIO_PAUSED) {
+            printf("(stream is paused)\n");
+        }
     } else {
         assert(hnd == STREAM_HANDLE);
+        printf("Gathering data...\n");
         // Fill the buffer from SDL
         SPEC.callback(SPEC.userdata, BUFFER, SPEC.size);
     }
     SDL_UnlockAudioDevice(1);
 
+    printf("Converting buffer of size %u...\n", (unsigned int) SPEC.size);
     int rc = SDL_AudioStreamPut(STREAM, BUFFER, SPEC.size);
     assert(rc != -1);
 
-    SDL_AudioStreamFlush(STREAM);
-
     int available = SDL_AudioStreamAvailable(STREAM);
+
+    printf("%d bytes available...\n", available);
 
     if(CONVERTED_BUFFER) {
         free(CONVERTED_BUFFER);
+        CONVERTED_BUFFER = NULL;
     }
 
     CONVERTED_BUFFER = (Uint8*) malloc(available);
 
-    int gotten = SDL_AudioStreamGet(STREAM, CONVERTED_BUFFER, sizeof(CONVERTED_BUFFER));
+    int gotten = SDL_AudioStreamGet(STREAM, CONVERTED_BUFFER, available);
     assert(gotten != -1);
+    assert(gotten == available && "Not all data was retrieved from the stream");
 
     *smp_recv = gotten;
 
+    printf("Returning buffer to KOS...\n");
     // Return it to KOS
     return CONVERTED_BUFFER;
 }
@@ -154,15 +168,24 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
     }
 
     memcpy(&SPEC, desired, sizeof(SDL_AudioSpec));
+    SPEC.format = AUDIO_S8;
+    SPEC.channels = 2;
+    SPEC.freq = 44100;
+
     SDL_CalculateAudioSpec(&SPEC);
 
     if(obtained) {
+        // We pretend we got what they asked for even though
+        // internally we're converting to AUDIO_S8
         memcpy(obtained, &SPEC, sizeof(SDL_AudioSpec));
+        obtained->format = desired->format;
+        obtained->freq = desired->freq;
+        obtained->channels = desired->channels;
+        SDL_CalculateAudioSpec(obtained);
     }
 
     // This is what mojoAL submits
     assert(desired->format == AUDIO_F32LSB);
-    assert(SPEC.format == AUDIO_F32LSB);
 
     assert(!BUFFER);
 
@@ -170,7 +193,7 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
 
     STREAM = SDL_NewAudioStream(
         SPEC.format, SPEC.channels, SPEC.freq,
-        AUDIO_S8, SPEC.channels, SPEC.freq
+        AUDIO_S8, 2, 44100
     );
 
     assert(STREAM);
@@ -182,11 +205,17 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
     // FIXME: Move to SDL_init();
     snd_stream_init();
 
+    assert(SPEC.size < SND_STREAM_BUFFER_MAX);
+
     STREAM_HANDLE = snd_stream_alloc(&stream_callback, SPEC.size);
     assert(STREAM_HANDLE != SND_STREAM_INVALID);
 
     THREAD = thd_create(1, (void*)stream_thread, NULL);
-    snd_stream_start(STREAM_HANDLE, SPEC.samples, 1);
+
+    printf("Starting stream...\n");
+    printf("Frequency is: %d\n", SPEC.freq);
+    printf("Channels: %d\n", SPEC.channels);
+    snd_stream_start(STREAM_HANDLE, SPEC.freq, SPEC.channels == 2);
 #endif
     return DEVICE_ID;
 }
@@ -200,6 +229,7 @@ void SDL_CloseAudioDevice(SDL_AudioDeviceID dev) {
     RUNNING = SDL_FALSE;
 
 #ifdef _arch_dreamcast
+    printf("Destroying stream!\n");
     thd_join(THREAD, NULL);
 
     snd_stream_stop(STREAM_HANDLE);
