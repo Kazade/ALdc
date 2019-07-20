@@ -1806,7 +1806,7 @@ ALCcontext *alcCreateContext(ALCdevice *device, const ALCint* attrlist)
         desired.freq = freq;
         desired.format = AUDIO_F32SYS;
         desired.channels = 2;  FIXME("don't force channels?");
-        desired.samples = 1024;  FIXME("base this on refresh");
+        desired.samples = 2048;  FIXME("base this on refresh");
         desired.callback = playback_device_callback;
         desired.userdata = device;
         device->sdldevice = SDL_OpenAudioDevice(devicename, 0, &desired, NULL, 0);
