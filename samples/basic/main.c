@@ -221,6 +221,7 @@ int main(int argc, char **argv)
 	while (source_state == AL_PLAYING) {
 		alGetSourcei(source, AL_SOURCE_STATE, &source_state);
 		TEST_ERROR("source state get");
+        thd_pass();
 	}
 
 	/* exit context */

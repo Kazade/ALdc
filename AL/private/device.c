@@ -82,13 +82,10 @@ void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
     assert(STREAM_HANDLE != SND_STREAM_INVALID);
 
     SDL_LockAudioDevice(1);
-    if(STATUS == SDL_AUDIO_PAUSED || !OBTAINED_SPEC.callback) {
+    if(STATUS == SDL_AUDIO_PAUSED) {
         // Fill the buffer with silence
         SDL_memset(SOURCE_BUFFER, DESIRED_SPEC.silence, DESIRED_SPEC.size);
-        printf("Playing silence...\n");
-        if(STATUS == SDL_AUDIO_PAUSED) {
-            printf("(stream is paused)\n");
-        }
+        printf("Playing silence...(stream is paused)\n");
     } else {
         assert(hnd == STREAM_HANDLE);
         printf("Gathering data...\n");
@@ -132,6 +129,10 @@ int stream_thread(void *arg) {
 		thd_pass();
 #endif
 	}
+
+    snd_stream_stop(STREAM_HANDLE);
+    snd_stream_destroy(STREAM_HANDLE);
+    snd_stream_shutdown();
 
     printf("Thread exit!\n");
 	return 0;
@@ -181,7 +182,6 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
 
     OBTAINED_SPEC.format = AUDIO_S16LSB;
     OBTAINED_SPEC.channels = 2;
-    OBTAINED_SPEC.freq = 44100;
 
     SDL_CalculateAudioSpec(&DESIRED_SPEC);
     SDL_CalculateAudioSpec(&OBTAINED_SPEC);
@@ -215,6 +215,10 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
 
     assert(OBTAINED_SPEC.size < SND_STREAM_BUFFER_MAX);
 
+    printf("Desired Frequency is: %d\n", DESIRED_SPEC.freq);
+    printf("Desired Channels: %d\n", DESIRED_SPEC.channels);
+    printf("Desired Samples: %d\n", DESIRED_SPEC.samples);
+
     printf("Starting stream...\n");
     printf("Frequency is: %d\n", OBTAINED_SPEC.freq);
     printf("Channels: %d\n", OBTAINED_SPEC.channels);
@@ -235,10 +239,6 @@ void SDL_CloseAudioDevice(SDL_AudioDeviceID dev) {
 #ifdef _arch_dreamcast
     printf("Destroying stream!\n");
     thd_join(THREAD, NULL);
-
-    snd_stream_stop(STREAM_HANDLE);
-    snd_stream_destroy(STREAM_HANDLE);
-    snd_stream_shutdown();
 #endif
 
     SDL_FreeAudioStream(STREAM);
