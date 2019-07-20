@@ -21,9 +21,6 @@ static SDL_AudioSpec DESIRED_SPEC;
 // This is the spec that we're passing to KOS
 static SDL_AudioSpec OBTAINED_SPEC;
 
-// This is the source buffer that MojoAL populates
-static Uint8* SOURCE_BUFFER = NULL;
-
 // We then convert the format into this dest buffer
 static Uint8* DEST_BUFFER = NULL;
 
@@ -75,8 +72,8 @@ void SDL_UnlockAudioDevice(SDL_AudioDeviceID dev) {
 
 #ifdef _arch_dreamcast
 void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
-    const int SAMPLES = 4096;
-    Uint8 BUFFER[4096];
+    static const int SAMPLES = 4096;
+    static Uint8 BUFFER[4096];
 
     // printf("KOS requested %d bytes\n", smp_req);
 
@@ -85,20 +82,22 @@ void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
     assert(STREAM_HANDLE != SND_STREAM_INVALID);
 
     SDL_LockAudioDevice(1);
-    if(STATUS == SDL_AUDIO_PAUSED) {
-        // Fill the buffer with silence
-        SDL_memset(SOURCE_BUFFER, DESIRED_SPEC.silence, DESIRED_SPEC.size);
-        // printf("Playing silence...(stream is paused)\n");
-    } else {
-        assert(hnd == STREAM_HANDLE);
-        // printf("Gathering data...\n");
-        // Fill the buffer from SDL
-        while (SDL_AudioStreamAvailable(STREAM) < smp_req) {
+
+    assert(hnd == STREAM_HANDLE);
+
+    // Fill the buffer from SDL
+    while (SDL_AudioStreamAvailable(STREAM) < smp_req) {
+        if(STATUS == SDL_AUDIO_PAUSED) {
+            // printf("Playing silence...(stream is paused)\n");
+            SDL_memset(BUFFER, DESIRED_SPEC.silence, SAMPLES);
+        } else {
+            // printf("Gathering data...\n");
             OBTAINED_SPEC.callback(DESIRED_SPEC.userdata, BUFFER, SAMPLES);
-            int rc = SDL_AudioStreamPut(STREAM, BUFFER, SAMPLES);
-            assert(rc != -1);
         }
+        int rc = SDL_AudioStreamPut(STREAM, BUFFER, SAMPLES);
+        assert(rc != -1);
     }
+
     SDL_UnlockAudioDevice(1);
 
     // printf("Converting buffer of size %u...\n", (unsigned int) DESIRED_SPEC.size);
@@ -189,9 +188,6 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
     // This is what mojoAL submits
     assert(desired->format == AUDIO_F32LSB);
 
-    assert(!SOURCE_BUFFER);
-
-    SOURCE_BUFFER = (Uint8*) malloc(DESIRED_SPEC.size + 16384); // 16kb safety in the source buffer
     DEST_BUFFER = (Uint8*) malloc(OBTAINED_SPEC.size);
 
     STREAM = SDL_NewAudioStream(
