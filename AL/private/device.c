@@ -61,7 +61,7 @@ SDL_AudioStatus SDL_GetAudioDeviceStatus(SDL_AudioDeviceID dev) {
 
 void SDL_PauseAudioDevice(SDL_AudioDeviceID dev, int pause_on) {
     assert(dev == DEVICE_ID);
-    if(!pause_on) printf("Unpausing audio\n");
+    if(!pause_on) // printf("Unpausing audio\n");
     STATUS = (pause_on) ? SDL_AUDIO_PAUSED : SDL_AUDIO_PLAYING;
 }
 
@@ -75,7 +75,7 @@ void SDL_UnlockAudioDevice(SDL_AudioDeviceID dev) {
 
 #ifdef _arch_dreamcast
 void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
-    printf("KOS requested %d bytes\n", smp_req);
+    // printf("KOS requested %d bytes\n", smp_req);
 
     // smp_req == spec.size because that's what we passed
     // when initalizing the KOS stream
@@ -85,24 +85,24 @@ void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
     if(STATUS == SDL_AUDIO_PAUSED) {
         // Fill the buffer with silence
         SDL_memset(SOURCE_BUFFER, DESIRED_SPEC.silence, DESIRED_SPEC.size);
-        printf("Playing silence...(stream is paused)\n");
+        // printf("Playing silence...(stream is paused)\n");
     } else {
         assert(hnd == STREAM_HANDLE);
-        printf("Gathering data...\n");
+        // printf("Gathering data...\n");
         // Fill the buffer from SDL
         OBTAINED_SPEC.callback(DESIRED_SPEC.userdata, SOURCE_BUFFER, DESIRED_SPEC.size);
     }
     SDL_UnlockAudioDevice(1);
 
-    printf("Converting buffer of size %u...\n", (unsigned int) DESIRED_SPEC.size);
+    // printf("Converting buffer of size %u...\n", (unsigned int) DESIRED_SPEC.size);
     int rc = SDL_AudioStreamPut(STREAM, SOURCE_BUFFER, DESIRED_SPEC.size);
     assert(rc != -1);
 
     int available = SDL_AudioStreamAvailable(STREAM);
 
-    printf("%d bytes available...\n", available);
+    // printf("%d bytes available...\n", available);
 
-    SDL_AudioStreamFlush(STREAM);
+    // SDL_AudioStreamFlush(STREAM);
 
     int gotten = SDL_AudioStreamGet(STREAM, DEST_BUFFER, available);
     assert(gotten != -1);
@@ -110,7 +110,7 @@ void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
 
     *smp_recv = gotten;
 
-    printf("Returning buffer to KOS...\n");
+    // printf("Returning buffer to KOS...\n");
     // Return it to KOS
     return DEST_BUFFER;
 }
@@ -126,7 +126,7 @@ int stream_thread(void *arg) {
         int ret = snd_stream_poll(STREAM_HANDLE);
         assert(ret == 0);
 
-		thd_pass();
+        thd_pass();
 #endif
 	}
 
@@ -134,7 +134,7 @@ int stream_thread(void *arg) {
     snd_stream_destroy(STREAM_HANDLE);
     snd_stream_shutdown();
 
-    printf("Thread exit!\n");
+    // printf("Thread exit!\n");
 	return 0;
 }
 
@@ -159,12 +159,10 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
     SDL_AudioSpec*       obtained,
     int                  allowed_changes) {
 
-    if(device && strlen(device) && strcmp(device, DREAMCAST_AUDIO_DEVICE_NAME) != 0) {
-        SDL_SetError("Couldn't find matching audio device:");
-        fprintf(stderr, device);
-        fprintf(stderr, "\n");
-        return 0;
-    }
+    // We should check device here, but, mojoAL passes NULL
+    // for the const char* and for some reason checking for
+    // NULL doesn't work and the world ends horrifically, so
+    // we don't check device here.
 
     if(iscapture) {
         SDL_SetError("No capture devices supported\n");
@@ -215,13 +213,13 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
 
     assert(OBTAINED_SPEC.size < SND_STREAM_BUFFER_MAX);
 
-    printf("Desired Frequency is: %d\n", DESIRED_SPEC.freq);
-    printf("Desired Channels: %d\n", DESIRED_SPEC.channels);
-    printf("Desired Samples: %d\n", DESIRED_SPEC.samples);
+    // printf("Desired Frequency is: %d\n", DESIRED_SPEC.freq);
+    // printf("Desired Channels: %d\n", DESIRED_SPEC.channels);
+    // printf("Desired Samples: %d\n", DESIRED_SPEC.samples);
 
-    printf("Starting stream...\n");
-    printf("Frequency is: %d\n", OBTAINED_SPEC.freq);
-    printf("Channels: %d\n", OBTAINED_SPEC.channels);
+    // printf("Starting stream...\n");
+    // printf("Frequency is: %d\n", OBTAINED_SPEC.freq);
+    // printf("Channels: %d\n", OBTAINED_SPEC.channels);
 
     THREAD = thd_create(1, (void*)stream_thread, NULL);
 #endif
@@ -237,7 +235,7 @@ void SDL_CloseAudioDevice(SDL_AudioDeviceID dev) {
     RUNNING = SDL_FALSE;
 
 #ifdef _arch_dreamcast
-    printf("Destroying stream!\n");
+    // printf("Destroying stream!\n");
     thd_join(THREAD, NULL);
 #endif
 

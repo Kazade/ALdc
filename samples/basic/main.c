@@ -159,7 +159,7 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
-	fprintf(stdout, "Device: %s\n", alcGetString(device, ALC_DEVICE_SPECIFIER));
+    // fprintf(stdout, "Device: %s\n", alcGetString(device, ALC_DEVICE_SPECIFIER));
 
 	alGetError();
 
@@ -213,6 +213,7 @@ int main(int argc, char **argv)
 	alSourcei(source, AL_BUFFER, buffer);
 	TEST_ERROR("buffer binding");
 
+    // alSourcei(source, AL_LOOPING, 1);
 	alSourcePlay(source);
 	TEST_ERROR("source playing");
 
