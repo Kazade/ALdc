@@ -1,10 +1,3 @@
-#include "../aldc.h"
-#include "errors.h"
-#include <stdio.h>
-
-#ifdef _arch_dreamcast
-#include <dc/sound/stream.h>
-#endif
 
 #define DREAMCAST_AUDIO_DEVICE_NAME "Yamaha AICA Stereo Device"
 

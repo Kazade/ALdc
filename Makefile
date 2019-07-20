@@ -6,7 +6,7 @@
 # Copyright (C) 2018 Luke Benstead
 
 TARGET = libAL.a
-OBJS = AL/mojoal.o AL/aldc.o AL/private/data_queue.o AL/private/errors.o AL/private/device.o AL/private/converters.o
+OBJS = AL/mojoal.o AL/aldc.o
 
 SUBDIRS =
 

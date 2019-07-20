@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../aldc.h"
 
 SDL_FORCE_INLINE Uint16 SDL_Swap16(Uint16 x) {
     return SDL_static_cast(Uint16, ((x << 8) | (x >> 8)));

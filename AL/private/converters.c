@@ -1,10 +1,8 @@
-#include "../aldc.h"
-
 #define DIVBY128 0.0078125f
 #define DIVBY32768 0.000030517578125f
 #define DIVBY8388607 0.00000011920930376163766f
 
-void SDLCALL
+void
 SDL_Convert_S8_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
 {
     const Sint8 *src = ((const Sint8 *) (cvt->buf + cvt->len_cvt)) - 1;
@@ -21,7 +19,7 @@ SDL_Convert_S8_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     }
 }
 
-void SDLCALL
+void
 SDL_Convert_U8_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
 {
     const Uint8 *src = ((const Uint8 *) (cvt->buf + cvt->len_cvt)) - 1;
@@ -38,7 +36,7 @@ SDL_Convert_U8_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     }
 }
 
-void SDLCALL
+void
 SDL_Convert_S16_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
 {
     const Sint16 *src = ((const Sint16 *) (cvt->buf + cvt->len_cvt)) - 1;
@@ -55,7 +53,7 @@ SDL_Convert_S16_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     }
 }
 
-void SDLCALL
+void
 SDL_Convert_U16_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
 {
     const Uint16 *src = ((const Uint16 *) (cvt->buf + cvt->len_cvt)) - 1;
@@ -72,7 +70,7 @@ SDL_Convert_U16_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     }
 }
 
-void SDLCALL
+void
 SDL_Convert_S32_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
 {
     const Sint32 *src = (const Sint32 *) cvt->buf;
@@ -88,7 +86,7 @@ SDL_Convert_S32_to_F32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     }
 }
 
-void SDLCALL
+void
 SDL_Convert_F32_to_S8(SDL_AudioCVT *cvt, SDL_AudioFormat format)
 {
     const float *src = (const float *) cvt->buf;
@@ -112,7 +110,7 @@ SDL_Convert_F32_to_S8(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     }
 }
 
-void SDLCALL
+void
 SDL_Convert_F32_to_U8(SDL_AudioCVT *cvt, SDL_AudioFormat format)
 {
     const float *src = (const float *) cvt->buf;
@@ -136,7 +134,7 @@ SDL_Convert_F32_to_U8(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     }
 }
 
-void SDLCALL
+void
 SDL_Convert_F32_to_S16(SDL_AudioCVT *cvt, SDL_AudioFormat format)
 {
     const float *src = (const float *) cvt->buf;
@@ -160,7 +158,7 @@ SDL_Convert_F32_to_S16(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     }
 }
 
-void SDLCALL
+void
 SDL_Convert_F32_to_U16(SDL_AudioCVT *cvt, SDL_AudioFormat format)
 {
     const float *src = (const float *) cvt->buf;
@@ -184,7 +182,7 @@ SDL_Convert_F32_to_U16(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     }
 }
 
-void SDLCALL
+void
 SDL_Convert_F32_to_S32(SDL_AudioCVT *cvt, SDL_AudioFormat format)
 {
     const float *src = (const float *) cvt->buf;

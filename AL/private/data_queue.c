@@ -1,7 +1,3 @@
-#include "stdint.h"
-#include "data_queue.h"
-#include "../aldc.h"
-#include "errors.h"
 
 typedef struct SDL_DataQueuePacket
 {
@@ -19,6 +15,8 @@ struct SDL_DataQueue
     size_t packet_size;   /* size of new packets */
     size_t queued_bytes;  /* number of bytes of data in the queue. */
 };
+
+typedef struct SDL_DataQueue SDL_DataQueue;
 
 static void
 SDL_FreeDataQueueList(SDL_DataQueuePacket *packet)

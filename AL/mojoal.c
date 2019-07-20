@@ -22,7 +22,7 @@
 #include "AL/alc.h"
 
 // Instead of SDL.h
-#include "aldc.h"
+#include "aldc.c"
 
 #ifdef __SSE__  /* if you are on x86 or x86-64, we assume you have SSE1 by now. */
 #define NEED_SCALAR_FALLBACK 0
