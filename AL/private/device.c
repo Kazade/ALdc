@@ -75,6 +75,9 @@ void SDL_UnlockAudioDevice(SDL_AudioDeviceID dev) {
 
 #ifdef _arch_dreamcast
 void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
+    const int SAMPLES = 4096;
+    Uint8 BUFFER[4096];
+
     // printf("KOS requested %d bytes\n", smp_req);
 
     // smp_req == spec.size because that's what we passed
@@ -90,23 +93,18 @@ void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
         assert(hnd == STREAM_HANDLE);
         // printf("Gathering data...\n");
         // Fill the buffer from SDL
-        OBTAINED_SPEC.callback(DESIRED_SPEC.userdata, SOURCE_BUFFER, DESIRED_SPEC.size);
+        while (SDL_AudioStreamAvailable(STREAM) < smp_req) {
+            OBTAINED_SPEC.callback(DESIRED_SPEC.userdata, BUFFER, SAMPLES);
+            int rc = SDL_AudioStreamPut(STREAM, BUFFER, SAMPLES);
+            assert(rc != -1);
+        }
     }
     SDL_UnlockAudioDevice(1);
 
     // printf("Converting buffer of size %u...\n", (unsigned int) DESIRED_SPEC.size);
-    int rc = SDL_AudioStreamPut(STREAM, SOURCE_BUFFER, DESIRED_SPEC.size);
-    assert(rc != -1);
-
-    int available = SDL_AudioStreamAvailable(STREAM);
-
     // printf("%d bytes available...\n", available);
-
-    // SDL_AudioStreamFlush(STREAM);
-
-    int gotten = SDL_AudioStreamGet(STREAM, DEST_BUFFER, available);
+    int gotten = SDL_AudioStreamGet(STREAM, DEST_BUFFER, smp_req);
     assert(gotten != -1);
-    assert(gotten == available && "Not all data was retrieved from the stream");
 
     *smp_recv = gotten;
 
@@ -193,7 +191,7 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
 
     assert(!SOURCE_BUFFER);
 
-    SOURCE_BUFFER = (Uint8*) malloc(DESIRED_SPEC.size);
+    SOURCE_BUFFER = (Uint8*) malloc(DESIRED_SPEC.size + 16384); // 16kb safety in the source buffer
     DEST_BUFFER = (Uint8*) malloc(OBTAINED_SPEC.size);
 
     STREAM = SDL_NewAudioStream(
