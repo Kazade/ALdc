@@ -213,7 +213,7 @@ int main(int argc, char **argv)
 	alSourcei(source, AL_BUFFER, buffer);
 	TEST_ERROR("buffer binding");
 
-    // alSourcei(source, AL_LOOPING, 1);
+    alSourcei(source, AL_LOOPING, 1);
 	alSourcePlay(source);
 	TEST_ERROR("source playing");
 
