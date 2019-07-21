@@ -40,8 +40,7 @@ AL_API void AL_APIENTRY alutLoadWAVFile (ALbyte *filename,
                       ALenum *format,
                       void **data,
                       ALsizei *size,
-                      ALsizei *frequency,
-                      ALboolean *loop);
+                      ALsizei *frequency);
 
 AL_API void AL_APIENTRY alutUnloadWAV (ALenum format, ALvoid *data, ALsizei size, ALsizei frequency);
 

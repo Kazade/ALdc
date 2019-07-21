@@ -6,7 +6,7 @@
 # Copyright (C) 2018 Luke Benstead
 
 TARGET = libAL.a
-OBJS = AL/mojoal.o AL/aldc.o
+OBJS = AL/mojoal.o AL/aldc.o AL/alut.o
 
 SUBDIRS =
 
