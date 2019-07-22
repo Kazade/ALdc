@@ -9,4 +9,5 @@ export OBJEXTRA := $(LIB_DIR)/libAL.a
 all:
 	$(KOS_MAKE) -C basic all
 	$(KOS_MAKE) -C helicopter all
+	$(KOS_MAKE) -C streaming all
 
