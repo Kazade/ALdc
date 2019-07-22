@@ -89,6 +89,9 @@ void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
         }
         int rc = SDL_AudioStreamPut(STREAM, BUFFER, SAMPLES);
         assert(rc != -1);
+        if(rc == -1) {
+            fprintf(stderr, "Error putting audiostream data!!\n");
+        }
     }
 
     SDL_UnlockAudioDevice(1);
@@ -115,6 +118,9 @@ int stream_thread(void *arg) {
 #ifdef _arch_dreamcast
         int ret = snd_stream_poll(STREAM_HANDLE);
         assert(ret == 0);
+        if(ret != 0) {
+            fprintf(stderr, "Error polling the stream!!\n");
+        }
 
         thd_pass();
 #endif
@@ -197,6 +203,9 @@ SDL_AudioDeviceID SDL_OpenAudioDevice(
     // FIXME: Move to SDL_init();
     int rc = snd_stream_init();
     assert(rc == 0);
+    if(rc != 0) {
+        fprintf(stderr, "Error initializing the stream!!\n");
+    }
 
     assert(OBTAINED_SPEC.size < SND_STREAM_BUFFER_MAX);
 
