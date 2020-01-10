@@ -73,7 +73,7 @@ void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
     static const int SAMPLES = 4096;
     static Uint8 BUFFER[4096];
 
-    // printf("KOS requested %d bytes\n", smp_req);
+    //printf("KOS requested %d bytes\n", smp_req);
 
     // smp_req == spec.size because that's what we passed
     // when initalizing the KOS stream
@@ -103,12 +103,17 @@ void* stream_callback(snd_stream_hnd_t hnd, int smp_req, int *smp_recv) {
 
     // printf("Converting buffer of size %u...\n", (unsigned int) DESIRED_SPEC.size);
     // printf("%d bytes available...\n", available);
-    int gotten = SDL_AudioStreamGet(STREAM, DEST_BUFFER, smp_req);
+    /* snd_stream sometimes requests more samples than the buffer size
+     * we told it about! */
+    int to_get = (smp_req < OBTAINED_SPEC.size) ? smp_req : OBTAINED_SPEC.size;
+    int gotten = SDL_AudioStreamGet(STREAM, DEST_BUFFER, to_get);
+
     assert(gotten != -1);
+    assert(gotten <= OBTAINED_SPEC.size);
 
     *smp_recv = gotten;
 
-    // printf("Returning buffer to KOS...\n");
+    //printf("Returning buffer to KOS (%d)...\n", gotten);
     // Return it to KOS
     return DEST_BUFFER;
 }
