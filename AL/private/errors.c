@@ -17,7 +17,8 @@ static SDL_errorcode error = SDL_NO_ERROR;
 
 /* This doesn't behave list SDL_Error, but more like GL errors */
 int SDL_Error(SDL_errorcode code) {
-    if(error != SDL_NO_ERROR) {
+    if(error == SDL_NO_ERROR) {
+        fprintf(stderr, "OpenAL Error occurred: %d\n", code);
         error = code;
     }
 
