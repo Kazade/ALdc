@@ -6,6 +6,7 @@ typedef uint32_t snd_stream_hnd_t;
 const snd_stream_hnd_t SND_STREAM_INVALID = -1;
 #else
 static kthread_t* THREAD = NULL;
+static mutex_t DEVICE_MUTEX = MUTEX_INITIALIZER;
 #endif
 
 // This is the spec that MojoAL asked for
@@ -56,11 +57,15 @@ void SDL_PauseAudioDevice(SDL_AudioDeviceID dev, int pause_on) {
 }
 
 void SDL_LockAudioDevice(SDL_AudioDeviceID dev) {
-
+#ifdef _arch_dreamcast
+    mutex_lock(&DEVICE_MUTEX);
+#endif
 }
 
 void SDL_UnlockAudioDevice(SDL_AudioDeviceID dev) {
-
+#ifdef _arch_dreamcast
+    mutex_unlock(&DEVICE_MUTEX);
+#endif
 }
 
 #ifdef _arch_dreamcast
