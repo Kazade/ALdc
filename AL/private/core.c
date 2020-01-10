@@ -57,6 +57,10 @@ typedef enum {
 #define SDL_strcmp      strcmp
 #define SDL_zero(x)   SDL_memset(&(x), 0, sizeof((x)))
 
+#ifdef __STRICT_ANSI__
+char *strdup(const char *);
+#endif
+
 static inline size_t SDL_strlcpy(char *dst, const char *src, size_t maxlen) {
     size_t srclen = SDL_strlen(src);
     if (maxlen > 0) {
