@@ -19,8 +19,7 @@ void SDL_AtomicUnlock(SDL_SpinLock *lock);
 #define SDL_AtomicDecRef(a)    (SDL_AtomicAdd(a, -1) == 1)
 #endif
 
-// FIXME: How to implement this on SH4?
-#define PAUSE_INSTRUCTION()
+#define PAUSE_INSTRUCTION()  thd_pass()
 
 static SDL_SpinLock locks[32];
 
