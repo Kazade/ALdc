@@ -6,7 +6,6 @@
  * doing it from scratch
  */
 
-#define M_PI 3.14159265358979323846264338327950288
 
 #include <stdint.h>
 #include <math.h>
@@ -17,6 +16,11 @@
 
 #include <kos/mutex.h>
 #include <dc/sound/stream.h>
+
+/* Sometimes I get undefined errors about this... weird */
+#ifndef M_PI
+#define M_PI 3.14159265358979323846264338327950288
+#endif
 
 #include "private/core.c"
 #include "private/endian.c"
