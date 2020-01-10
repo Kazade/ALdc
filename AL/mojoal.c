@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <float.h>
+#include <strings.h>
 
 #ifdef _MSC_VER
   #define AL_API __declspec(dllexport)
