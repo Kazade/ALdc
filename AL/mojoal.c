@@ -2995,7 +2995,7 @@ void alGetListeneri(ALenum param, ALint *value)
 
 void alGetListener3i(ALenum param, ALint *value1, ALint *value2, ALint *value3)
 {
-    ALint values[3];
+    ALint values[] = {0, 0, 0};
     switch (param) {
         case AL_POSITION:
         case AL_VELOCITY:
@@ -3466,7 +3466,7 @@ void alGetSource3i(ALuint name, ALenum param, ALint *value1, ALint *value2, ALin
 {
     switch (param) {
         case AL_DIRECTION: {
-            ALint values[3];
+            ALint values[] = {0, 0, 0};
             alGetSourceiv(name, param, values);
             if (value1) *value1 = values[0];
             if (value2) *value2 = values[1];
